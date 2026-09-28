@@ -1,0 +1,13 @@
+# /etc/systemd/system/caudal-bot-healthcheck.service. Triggered by the .timer of the same name.
+[Unit]
+Description=Restart caudal-bot if /health stays unhealthy
+# Only probe a bot that's supposed to be running: a deliberately stopped bot is left alone.
+Requisite=caudal-bot.service
+After=caudal-bot.service
+
+[Service]
+Type=oneshot
+ExecStart=/bin/sh /opt/caudal-bot/deploy/systemd/healthcheck.sh
+NoNewPrivileges=yes
+PrivateTmp=yes
+ProtectHome=yes

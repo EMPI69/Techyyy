@@ -1,0 +1,78 @@
+# Caudal support bot. Quick start (see docs/DEPLOYMENT.md):
+#   mkdir -p data backups transcripts && sudo chown 10001:10001 data backups transcripts
+#   docker compose run --rm bot --dry-run     # validate config offline
+#   docker compose up -d                      # start (the image's default command is --run)
+name: caudal-bot
+
+services:
+  bot:
+    build:
+      context: .
+      target: runtime
+      args:
+        # Match these to the owner of ./data etc. if you'd rather not chown them to 10001.
+        UID: "${CAUDAL_UID:-10001}"
+        GID: "${CAUDAL_GID:-10001}"
+    image: caudal-bot:1.1.0
+    container_name: caudal-bot
+    command: ["--run"]
+    init: true                      # tini as PID 1: forwards SIGTERM, reaps zombies
+    restart: unless-stopped
+
+    env_file:
+      - .env                        # BOT_TOKEN, IDs, DASHBOARD_AUTH_TOKEN, ...
+    environment:
+      # These override .env: they describe the container's layout, not your server.
+      DATABASE_PATH: data/tickets.db
+      DASHBOARD_HOST: 0.0.0.0       # listen on the container interface so the port mapping works
+      DASHBOARD_PORT: "8080"
+      HEALTH_HOST: 127.0.0.1        # probed from inside the container only
+      HEALTH_PORT: "8081"
+
+    volumes:
+      - ./data:/app/data            # tickets.db (+ -wal/-shm while running)
+      - ./backups:/app/backups      # daily snapshots, 14-day retention
+      - ./transcripts:/app/transcripts   # HTML transcripts, 14-day retention
+
+    ports:
+      # Bound to the host's loopback: the dashboard is plain HTTP. Put an HTTPS reverse
+      # proxy in front before exposing it, or change to "8080:8080" on a trusted network.
+      - "127.0.0.1:8080:8080"
+
+    # Hardening: immutable filesystem except the volumes, no privileges, no capabilities.
+    read_only: true
+    tmpfs:
+      - /tmp:size=16m,mode=1777
+    cap_drop: [ALL]
+    security_opt:
+      - no-new-privileges:true
+    pids_limit: 256
+
+    deploy:
+      resources:
+        limits:
+          cpus: "0.50"
+          memory: 256M
+        reservations:
+          cpus: "0.10"
+          memory: 96M
+
+    # Graceful shutdown: SIGTERM -> loops awaited, dashboard stopped, SQLite flushed,
+    # gateway closed. 30s is well above what that takes; Docker's default 10s is tight.
+    stop_signal: SIGTERM
+    stop_grace_period: 30s
+
+    # "healthy" = gateway connected, database open, all background loops running.
+    # Note: plain Docker only reports health; it restarts on crashes, not on "unhealthy".
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request as u; u.build_opener(u.ProxyHandler({})).open('http://127.0.0.1:8081/health', timeout=4)"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 90s
+
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "5"

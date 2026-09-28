@@ -1,0 +1,35 @@
+# Build context allow-list by exclusion. Patterns here are anchored at the context root
+# (unlike .gitignore), so "transcripts" excludes ./transcripts but NOT caudal_bot/transcripts/.
+
+# Secrets: never enter an image layer (the container gets them from env_file at runtime)
+.env
+.env.*
+*.token
+*.pem
+*.key
+
+# Runtime data
+*.db
+*.db-wal
+*.db-shm
+*.db.partial
+*.html.partial
+data
+backups
+transcripts
+logs
+
+# Tooling, caches, VCS
+.git
+**/__pycache__
+**/*.py[cod]
+.pytest_cache
+.coverage
+.coverage.*
+htmlcov
+.venv
+venv
+.vscode
+.idea
+*.log
+deploy

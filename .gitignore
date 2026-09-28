@@ -1,0 +1,49 @@
+# ---- Secrets ------------------------------------------------------------------
+# .env holds BOT_TOKEN and DASHBOARD_AUTH_TOKEN. Never commit it; rotate the token
+# in the Discord Developer Portal if it ever is committed.
+.env
+.env.*
+!.env.example
+*.token
+*.pem
+*.key
+*.pyc
+
+# ---- Runtime data ----------------------------------------------------------------
+# SQLite database and its WAL side files, wherever they are.
+*.db
+*.db-wal
+*.db-shm
+*.db-journal
+*.partial
+# Data folders are anchored to the repo root with a leading "/": an unanchored
+# "transcripts/" would also ignore the caudal_bot/transcripts/ source package.
+/data/
+/backups/
+/transcripts/
+/logs/
+
+# ---- Python ------------------------------------------------------------------------
+__pycache__/
+*.py[cod]
+*.egg-info/
+build/
+dist/
+.venv/
+venv/
+
+# ---- Tests & coverage ------------------------------------------------------------------
+.pytest_cache/
+.coverage
+.coverage.*
+coverage.xml
+htmlcov/
+
+# ---- Editors & OS files ----------------------------------------------------------------
+.vscode/
+.idea/
+*.swp
+*.log
+.DS_Store
+Thumbs.db
+desktop.ini

@@ -1,0 +1,72 @@
+# /etc/systemd/system/caudal-bot.service  (installed by deploy/systemd/install.sh)
+#
+#   systemctl enable --now caudal-bot          start now and on boot
+#   journalctl -u caudal-bot -f                follow the logs
+#   systemctl reset-failed caudal-bot          after fixing a config that hit the start limit
+
+[Unit]
+Description=Caudal support bot (Discord FAQ + tickets)
+Documentation=file:///opt/caudal-bot/docs/DEPLOYMENT.md
+After=network-online.target
+Wants=network-online.target
+# Give up after 10 failed starts in 10 minutes instead of retrying a broken config (or a
+# revoked token) forever: Discord rate-limits repeated logins.
+StartLimitIntervalSec=600
+StartLimitBurst=10
+
+[Service]
+Type=simple
+User=caudal
+Group=caudal
+WorkingDirectory=/opt/caudal-bot
+
+# Secrets and server IDs. caudal-bot.env is read second, so its layout settings win
+# (tickets.db in data/, health endpoint on loopback:8081), matching the Docker image.
+EnvironmentFile=/opt/caudal-bot/.env
+EnvironmentFile=/opt/caudal-bot/deploy/systemd/caudal-bot.env
+Environment=PYTHONUNBUFFERED=1 PYTHONUTF8=1
+
+# Validate config, imports and the database schema before every start; a bad .env
+# fails here with a clear message instead of in the middle of a Discord login.
+ExecStartPre=/opt/caudal-bot/.venv/bin/python /opt/caudal-bot/bot.py --dry-run
+ExecStart=/opt/caudal-bot/.venv/bin/python /opt/caudal-bot/bot.py --run
+
+Restart=always
+RestartSec=10
+
+# Graceful shutdown: SIGTERM goes to the bot only (KillMode=mixed); it awaits its loops,
+# stops the dashboard, flushes SQLite and closes the gateway, normally in about a
+# second. Anything still running after 30s gets SIGKILL.
+KillSignal=SIGTERM
+KillMode=mixed
+TimeoutStopSec=30
+
+# Resource limits
+MemoryMax=512M
+CPUQuota=50%
+TasksMax=128
+
+# Sandboxing. The whole filesystem is read-only except the three data folders.
+NoNewPrivileges=yes
+ProtectSystem=strict
+ReadWritePaths=/opt/caudal-bot/data /opt/caudal-bot/backups /opt/caudal-bot/transcripts
+ProtectHome=yes
+PrivateTmp=yes
+PrivateDevices=yes
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectKernelLogs=yes
+ProtectControlGroups=yes
+ProtectClock=yes
+ProtectHostname=yes
+RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX
+RestrictNamespaces=yes
+RestrictRealtime=yes
+RestrictSUIDSGID=yes
+LockPersonality=yes
+SystemCallArchitectures=native
+CapabilityBoundingSet=
+UMask=0027
+
+[Install]
+WantedBy=multi-user.target

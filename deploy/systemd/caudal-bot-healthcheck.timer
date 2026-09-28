@@ -1,0 +1,13 @@
+# /etc/systemd/system/caudal-bot-healthcheck.timer.  Enable: systemctl enable --now caudal-bot-healthcheck.timer
+[Unit]
+Description=Probe caudal-bot's /health every 2 minutes
+
+[Timer]
+# Leave time for the first login after boot, then check every 2 minutes.
+OnBootSec=5min
+OnUnitActiveSec=2min
+AccuracySec=15s
+Unit=caudal-bot-healthcheck.service
+
+[Install]
+WantedBy=timers.target
