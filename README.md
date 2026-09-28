@@ -1,5 +1,3 @@
-# Caudal support bot
-
 Discord FAQ auto-replies with ticket escalation, transcripts, metrics and a dashboard.
 Configuration lives in `.env` (see the comments in that file).
 
